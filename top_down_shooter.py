@@ -1,6 +1,7 @@
 import pygame
 import random
 import math
+import os # Import os module to handle file paths
 
 # --- Game Constants ---
 WIDTH, HEIGHT = 1280, 720
@@ -34,10 +35,28 @@ GREY = (100, 100, 100)
 
 # --- Initialize Pygame ---
 pygame.init()
+pygame.mixer.init() # Initialize the mixer for sound
+
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Top-Down Shooter")
 clock = pygame.time.Clock()
 font = pygame.font.Font(None, 36) # Default font, size 36
+
+# --- Load Sounds ---
+# Define the path to the 'sounds' directory
+game_folder = os.path.dirname(__file__)
+sound_folder = os.path.join(game_folder, 'sounds')
+
+try:
+    gun_sound = pygame.mixer.Sound(os.path.join(sound_folder, 'gunshot.wav'))
+    player_death_sound = pygame.mixer.Sound(os.path.join(sound_folder, 'death.mp3'))
+    enemy_death_sound = pygame.mixer.Sound(os.path.join(sound_folder, 'hurt.mp3'))
+except pygame.error as e:
+    print(f"Could not load sound file: {e}")
+    gun_sound = None
+    player_death_sound = None
+    enemy_death_sound = None
+
 
 # --- Player Class ---
 class Player(pygame.sprite.Sprite):
@@ -82,6 +101,9 @@ class Player(pygame.sprite.Sprite):
         now = pygame.time.get_ticks()
         if now - self.last_shot > self.shoot_delay:
             self.last_shot = now
+            # Play gun sound
+            if gun_sound:
+                gun_sound.play()
             # Calculate bullet direction towards mouse
             mouse_x, mouse_y = pygame.mouse.get_pos()
             player_center_x, player_center_y = self.rect.center
@@ -324,6 +346,8 @@ while running:
             enemy_hit.health -= len(bullet_hit_list)
             if enemy_hit.health <= 0:
                 enemy_hit.kill() # Remove enemy if health is 0 or less
+                if enemy_death_sound: # Play enemy death sound
+                    enemy_death_sound.play()
                 if isinstance(enemy_hit, MiniBoss): # Check if it's a mini-boss
                     score += SCORE_PER_MINI_BOSS_KILL
                 else:
@@ -340,8 +364,11 @@ while running:
             player.take_damage(len(player_bullet_hits) * 10) # Player takes damage for each mini-boss bullet hit
 
         # Check if player health is zero
-        if player.health <= 0:
+        if player.health <= 0 and not game_over: # Ensure sound plays only once
             game_over = True
+            if player_death_sound:
+                player_death_sound.play()
+
 
     # --- Drawing ---
     screen.fill(BLACK) # Clear screen
