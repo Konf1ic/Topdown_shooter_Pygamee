@@ -3,16 +3,24 @@ import random
 import math
 
 # --- Game Constants ---
-WIDTH, HEIGHT = 1280, 720 # Increased screen size
+WIDTH, HEIGHT = 1280, 720
 FPS = 60
 PLAYER_SPEED = 5
-BULLET_SPEED = 7 # Bullet speed increased to 7
-ENEMY_SPEED = 3 # Increased enemy speed for red enemies
+PLAYER_HEALTH_MAX = 100 # Maximum player health
+BULLET_SPEED = 7
+PLAYER_SHOOT_DELAY = 150 # Player frames between shots
+ENEMY_SPEED = 3 # Speed for normal red enemies
 GREEN_ENEMY_SPEED = 1.5 # Slower speed for green enemies
-ENEMY_SPAWN_RATE = 100  # Frames between enemy spawns (lower is faster)
+MINI_BOSS_SPEED = 1.0 # Even slower speed for mini-boss
+ENEMY_SPAWN_RATE = 45  # Frames between enemy spawns (lower is faster)
+MINI_BOSS_SPAWN_TIME = 10 * FPS # 10 seconds in frames
 SCORE_PER_KILL = 10
+SCORE_PER_MINI_BOSS_KILL = 50 # Score for mini-boss
 ENEMY_HEALTH = 1 # Health for normal red enemies
 GREEN_ENEMY_HEALTH = 2 # Double health for green enemies
+MINI_BOSS_HEALTH = 4 # Health for mini-boss
+MINI_BOSS_BULLET_SPEED = 6
+MINI_BOSS_SHOOT_DELAY = PLAYER_SHOOT_DELAY * 2 # Mini-boss frames between shots (slower than player's)
 
 # --- Colors ---
 WHITE = (255, 255, 255)
@@ -21,6 +29,8 @@ RED = (255, 0, 0)
 GREEN = (0, 255, 0)
 BLUE = (0, 0, 255)
 YELLOW = (255, 255, 0)
+PURPLE = (128, 0, 128) # New purple color for mini-boss
+GREY = (100, 100, 100)
 
 # --- Initialize Pygame ---
 pygame.init()
@@ -37,8 +47,8 @@ class Player(pygame.sprite.Sprite):
         self.image.fill(BLUE)
         self.rect = self.image.get_rect(center=(WIDTH // 2, HEIGHT // 2))
         self.speed = PLAYER_SPEED
-        self.health = 100
-        self.shoot_delay = 150
+        self.health = PLAYER_HEALTH_MAX # Player health
+        self.shoot_delay = PLAYER_SHOOT_DELAY
         self.last_shot = pygame.time.get_ticks()
 
     def update(self):
@@ -78,9 +88,14 @@ class Player(pygame.sprite.Sprite):
             angle = math.atan2(mouse_y - player_center_y, mouse_x - player_center_x)
             bullet = Bullet(player_center_x, player_center_y, angle)
             all_sprites.add(bullet)
-            bullets.add(bullet)
+            player_bullets.add(bullet) # Changed from 'bullets' to 'player_bullets'
 
-# --- Bullet Class ---
+    def take_damage(self, amount):
+        self.health -= amount
+        if self.health < 0:
+            self.health = 0
+
+# --- Bullet Class (Player's Bullet) ---
 class Bullet(pygame.sprite.Sprite):
     def __init__(self, x, y, angle):
         super().__init__()
@@ -103,8 +118,8 @@ class Enemy(pygame.sprite.Sprite):
     def __init__(self):
         super().__init__()
         # Create a circular enemy
-        self.image = pygame.Surface((25, 25), pygame.SRCALPHA) # SRCALPHA for transparency
-        pygame.draw.circle(self.image, RED, (12, 12), 12) # Draw a red circle with radius 12, centered at (12,12)
+        self.image = pygame.Surface((25, 25), pygame.SRCALPHA)
+        pygame.draw.circle(self.image, RED, (12, 12), 12)
         # Spawn enemy at a random edge of the screen
         side = random.choice(['top', 'bottom', 'left', 'right'])
         if side == 'top':
@@ -121,7 +136,7 @@ class Enemy(pygame.sprite.Sprite):
             y = random.randint(0, HEIGHT)
         self.rect = self.image.get_rect(center=(x, y))
         self.speed = ENEMY_SPEED
-        self.health = ENEMY_HEALTH # Assign health to the enemy
+        self.health = ENEMY_HEALTH
 
     def update(self):
         # Move towards the player
@@ -139,8 +154,8 @@ class EnemyGreen(pygame.sprite.Sprite):
     def __init__(self):
         super().__init__()
         # Create a larger green circular enemy
-        self.image = pygame.Surface((40, 40), pygame.SRCALPHA) # Bigger size
-        pygame.draw.circle(self.image, GREEN, (20, 20), 20) # Green color, centered
+        self.image = pygame.Surface((40, 40), pygame.SRCALPHA)
+        pygame.draw.circle(self.image, GREEN, (20, 20), 20)
         # Spawn enemy at a random edge of the screen
         side = random.choice(['top', 'bottom', 'left', 'right'])
         if side == 'top':
@@ -156,8 +171,8 @@ class EnemyGreen(pygame.sprite.Sprite):
             x = WIDTH + 50
             y = random.randint(0, HEIGHT)
         self.rect = self.image.get_rect(center=(x, y))
-        self.speed = GREEN_ENEMY_SPEED # Slower speed
-        self.health = GREEN_ENEMY_HEALTH # Double health
+        self.speed = GREEN_ENEMY_SPEED
+        self.health = GREEN_ENEMY_HEALTH
 
     def update(self):
         # Move towards the player
@@ -170,15 +185,97 @@ class EnemyGreen(pygame.sprite.Sprite):
             self.rect.x += self.speed * (dx / dist)
             self.rect.y += self.speed * (dy / dist)
 
+# --- Mini-Boss Class (Purple, Shoots Back) ---
+class MiniBoss(pygame.sprite.Sprite):
+    def __init__(self):
+        super().__init__()
+        self.image = pygame.Surface((60, 60), pygame.SRCALPHA) # Larger size
+        pygame.draw.circle(self.image, PURPLE, (30, 30), 30) # Purple circle
+        # Spawn at a random edge
+        side = random.choice(['top', 'bottom', 'left', 'right'])
+        if side == 'top':
+            x = random.randint(0, WIDTH)
+            y = -70
+        elif side == 'bottom':
+            x = random.randint(0, WIDTH)
+            y = HEIGHT + 70
+        elif side == 'left':
+            x = -70
+            y = random.randint(0, HEIGHT)
+        else: # right
+            x = WIDTH + 70
+            y = random.randint(0, HEIGHT)
+        self.rect = self.image.get_rect(center=(x, y))
+        self.speed = MINI_BOSS_SPEED
+        self.health = MINI_BOSS_HEALTH
+        self.shoot_delay = MINI_BOSS_SHOOT_DELAY
+        self.last_shot = pygame.time.get_ticks()
+
+    def update(self):
+        # Move towards the player
+        player_center = player.rect.center
+        boss_center = self.rect.center
+        dx = player_center[0] - boss_center[0]
+        dy = player_center[1] - boss_center[1]
+        dist = math.hypot(dx, dy)
+        if dist > 0:
+            self.rect.x += self.speed * (dx / dist)
+            self.rect.y += self.speed * (dy / dist)
+
+        # Mini-boss shooting logic
+        now = pygame.time.get_ticks()
+        if now - self.last_shot > self.shoot_delay:
+            self.last_shot = now
+            self.shoot()
+
+    def shoot(self):
+        # Calculate bullet direction towards player
+        player_center_x, player_center_y = player.rect.center
+        boss_center_x, boss_center_y = self.rect.center
+        angle = math.atan2(player_center_y - boss_center_y, player_center_x - boss_center_x)
+        bullet = MiniBossBullet(boss_center_x, boss_center_y, angle)
+        all_sprites.add(bullet)
+        mini_boss_bullets.add(bullet)
+
+# --- Mini-Boss Bullet Class ---
+class MiniBossBullet(pygame.sprite.Sprite):
+    def __init__(self, x, y, angle):
+        super().__init__()
+        self.image = pygame.Surface((15, 15), pygame.SRCALPHA) # Slightly larger bullet
+        pygame.draw.circle(self.image, PURPLE, (7, 7), 7) # Purple bullet
+        self.rect = self.image.get_rect(center=(x, y))
+        self.speed = MINI_BOSS_BULLET_SPEED
+        self.vel_x = self.speed * math.cos(angle)
+        self.vel_y = self.speed * math.sin(angle)
+
+    def update(self):
+        self.rect.x += self.vel_x
+        self.rect.y += self.vel_y
+        # Remove bullet if it goes off screen
+        if not screen.get_rect().colliderect(self.rect):
+            self.kill()
+
+# --- Health Bar Function ---
+def draw_health_bar(surface, x, y, health, max_health, width, height):
+    if health < 0:
+        health = 0
+    fill = (health / max_health) * width
+    outline_rect = pygame.Rect(x, y, width, height)
+    fill_rect = pygame.Rect(x, y, fill, height)
+    pygame.draw.rect(surface, GREEN, fill_rect)
+    pygame.draw.rect(surface, WHITE, outline_rect, 2) # Outline
+
 # --- Game Variables ---
 score = 0
 game_over = False
 enemy_spawn_timer = 0
+mini_boss_spawn_timer = 0
 
 # --- Sprite Groups ---
 all_sprites = pygame.sprite.Group()
-bullets = pygame.sprite.Group()
-enemies = pygame.sprite.Group()
+player_bullets = pygame.sprite.Group() # Renamed from 'bullets'
+enemies = pygame.sprite.Group() # Contains red, green, and mini-boss enemies
+mini_boss_bullets = pygame.sprite.Group() # New group for mini-boss bullets
 
 # Create player
 player = Player()
@@ -199,10 +296,10 @@ while running:
         # --- Update ---
         all_sprites.update()
 
-        # Spawn enemies
+        # Spawn regular enemies (red and green)
         enemy_spawn_timer += 1
         if enemy_spawn_timer >= ENEMY_SPAWN_RATE:
-            # Randomly choose which enemy to spawn (70% red, 30% green)
+            # Randomly choose which regular enemy to spawn (70% red, 30% green)
             if random.random() < 0.7:
                 enemy = Enemy()
             else:
@@ -211,21 +308,39 @@ while running:
             enemies.add(enemy)
             enemy_spawn_timer = 0
 
-        # Collision detection: Bullets vs. Enemies
+        # Spawn mini-boss
+        mini_boss_spawn_timer += 1
+        if mini_boss_spawn_timer >= MINI_BOSS_SPAWN_TIME:
+            mini_boss = MiniBoss()
+            all_sprites.add(mini_boss)
+            enemies.add(mini_boss) # Add mini-boss to general enemies group for player bullet collision
+            mini_boss_spawn_timer = 0
+
+        # Collision detection: Player Bullets vs. Enemies (including mini-boss)
         # The first 'False' means enemies are not automatically removed on hit
-        hits = pygame.sprite.groupcollide(enemies, bullets, False, True)
+        hits = pygame.sprite.groupcollide(enemies, player_bullets, False, True)
         for enemy_hit, bullet_hit_list in hits.items():
             # Decrease health for each bullet that hit the enemy
             enemy_hit.health -= len(bullet_hit_list)
             if enemy_hit.health <= 0:
                 enemy_hit.kill() # Remove enemy if health is 0 or less
-                score += SCORE_PER_KILL # Add score only when enemy is truly killed
+                if isinstance(enemy_hit, MiniBoss): # Check if it's a mini-boss
+                    score += SCORE_PER_MINI_BOSS_KILL
+                else:
+                    score += SCORE_PER_KILL # Add score only when enemy is truly killed
 
-        # Collision detection: Player vs. Enemies
-        player_hits = pygame.sprite.spritecollide(player, enemies, False) # False means enemy is not removed
-        if player_hits:
-            # For simplicity, if player hits any enemy, it's game over
-            # In a real game, player would take damage and enemies might be removed
+        # Collision detection: Player vs. Enemies (red, green, mini-boss)
+        player_enemy_hits = pygame.sprite.spritecollide(player, enemies, True) # True means enemy is removed on contact
+        if player_enemy_hits:
+            player.take_damage(len(player_enemy_hits) * 20) # Player takes damage for each enemy hit
+
+        # Collision detection: Player vs. Mini-Boss Bullets
+        player_bullet_hits = pygame.sprite.spritecollide(player, mini_boss_bullets, True) # True means bullet is removed
+        if player_bullet_hits:
+            player.take_damage(len(player_bullet_hits) * 10) # Player takes damage for each mini-boss bullet hit
+
+        # Check if player health is zero
+        if player.health <= 0:
             game_over = True
 
     # --- Drawing ---
@@ -236,6 +351,12 @@ while running:
     # Display score
     score_text = font.render(f"Score: {score}", True, WHITE)
     screen.blit(score_text, (10, 10))
+
+    # Draw player health bar
+    draw_health_bar(screen, 10, 50, player.health, PLAYER_HEALTH_MAX, 200, 20)
+    health_text = font.render(f"Health: {player.health}/{PLAYER_HEALTH_MAX}", True, WHITE)
+    screen.blit(health_text, (10, 80))
+
 
     # Display Game Over message
     if game_over:
@@ -253,11 +374,13 @@ while running:
             score = 0
             game_over = False
             all_sprites.empty()
-            bullets.empty()
+            player_bullets.empty()
             enemies.empty()
+            mini_boss_bullets.empty()
             player = Player()
             all_sprites.add(player)
             enemy_spawn_timer = 0
+            mini_boss_spawn_timer = 0
 
     # --- Update Display ---
     pygame.display.flip()
