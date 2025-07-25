@@ -6,10 +6,13 @@ import math
 WIDTH, HEIGHT = 1280, 720 # Increased screen size
 FPS = 60
 PLAYER_SPEED = 5
-BULLET_SPEED = 5 # Bullet speed set to 5
-ENEMY_SPEED = 3 # Increased enemy speed
-ENEMY_SPAWN_RATE = 60  # Frames between enemy spawns (lower is faster)
+BULLET_SPEED = 7 # Bullet speed increased to 7
+ENEMY_SPEED = 3 # Increased enemy speed for red enemies
+GREEN_ENEMY_SPEED = 1.5 # Slower speed for green enemies
+ENEMY_SPAWN_RATE = 100  # Frames between enemy spawns (lower is faster)
 SCORE_PER_KILL = 10
+ENEMY_HEALTH = 1 # Health for normal red enemies
+GREEN_ENEMY_HEALTH = 2 # Double health for green enemies
 
 # --- Colors ---
 WHITE = (255, 255, 255)
@@ -95,11 +98,11 @@ class Bullet(pygame.sprite.Sprite):
         if not screen.get_rect().colliderect(self.rect):
             self.kill()
 
-# --- Enemy Class ---
+# --- Enemy Class (Red Circle) ---
 class Enemy(pygame.sprite.Sprite):
     def __init__(self):
         super().__init__()
-        # Create a circular enemy instead of a square
+        # Create a circular enemy
         self.image = pygame.Surface((25, 25), pygame.SRCALPHA) # SRCALPHA for transparency
         pygame.draw.circle(self.image, RED, (12, 12), 12) # Draw a red circle with radius 12, centered at (12,12)
         # Spawn enemy at a random edge of the screen
@@ -118,6 +121,43 @@ class Enemy(pygame.sprite.Sprite):
             y = random.randint(0, HEIGHT)
         self.rect = self.image.get_rect(center=(x, y))
         self.speed = ENEMY_SPEED
+        self.health = ENEMY_HEALTH # Assign health to the enemy
+
+    def update(self):
+        # Move towards the player
+        player_center = player.rect.center
+        enemy_center = self.rect.center
+        dx = player_center[0] - enemy_center[0]
+        dy = player_center[1] - enemy_center[1]
+        dist = math.hypot(dx, dy)
+        if dist > 0:
+            self.rect.x += self.speed * (dx / dist)
+            self.rect.y += self.speed * (dy / dist)
+
+# --- Green Enemy Class (Bigger, Slower, More Health) ---
+class EnemyGreen(pygame.sprite.Sprite):
+    def __init__(self):
+        super().__init__()
+        # Create a larger green circular enemy
+        self.image = pygame.Surface((40, 40), pygame.SRCALPHA) # Bigger size
+        pygame.draw.circle(self.image, GREEN, (20, 20), 20) # Green color, centered
+        # Spawn enemy at a random edge of the screen
+        side = random.choice(['top', 'bottom', 'left', 'right'])
+        if side == 'top':
+            x = random.randint(0, WIDTH)
+            y = -50
+        elif side == 'bottom':
+            x = random.randint(0, WIDTH)
+            y = HEIGHT + 50
+        elif side == 'left':
+            x = -50
+            y = random.randint(0, HEIGHT)
+        else: # right
+            x = WIDTH + 50
+            y = random.randint(0, HEIGHT)
+        self.rect = self.image.get_rect(center=(x, y))
+        self.speed = GREEN_ENEMY_SPEED # Slower speed
+        self.health = GREEN_ENEMY_HEALTH # Double health
 
     def update(self):
         # Move towards the player
@@ -162,15 +202,24 @@ while running:
         # Spawn enemies
         enemy_spawn_timer += 1
         if enemy_spawn_timer >= ENEMY_SPAWN_RATE:
-            enemy = Enemy()
+            # Randomly choose which enemy to spawn (70% red, 30% green)
+            if random.random() < 0.7:
+                enemy = Enemy()
+            else:
+                enemy = EnemyGreen()
             all_sprites.add(enemy)
             enemies.add(enemy)
             enemy_spawn_timer = 0
 
         # Collision detection: Bullets vs. Enemies
-        hits = pygame.sprite.groupcollide(enemies, bullets, True, True)
-        for hit in hits:
-            score += SCORE_PER_KILL
+        # The first 'False' means enemies are not automatically removed on hit
+        hits = pygame.sprite.groupcollide(enemies, bullets, False, True)
+        for enemy_hit, bullet_hit_list in hits.items():
+            # Decrease health for each bullet that hit the enemy
+            enemy_hit.health -= len(bullet_hit_list)
+            if enemy_hit.health <= 0:
+                enemy_hit.kill() # Remove enemy if health is 0 or less
+                score += SCORE_PER_KILL # Add score only when enemy is truly killed
 
         # Collision detection: Player vs. Enemies
         player_hits = pygame.sprite.spritecollide(player, enemies, False) # False means enemy is not removed
