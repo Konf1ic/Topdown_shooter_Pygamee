@@ -3,11 +3,11 @@ import random
 import math
 
 # --- Game Constants ---
-WIDTH, HEIGHT = 800, 600
+WIDTH, HEIGHT = 1280, 720 # Increased screen size
 FPS = 60
 PLAYER_SPEED = 5
-BULLET_SPEED = 10
-ENEMY_SPEED = 2
+BULLET_SPEED = 5 # Bullet speed set to 5
+ENEMY_SPEED = 3 # Increased enemy speed
 ENEMY_SPAWN_RATE = 60  # Frames between enemy spawns (lower is faster)
 SCORE_PER_KILL = 10
 
@@ -35,7 +35,7 @@ class Player(pygame.sprite.Sprite):
         self.rect = self.image.get_rect(center=(WIDTH // 2, HEIGHT // 2))
         self.speed = PLAYER_SPEED
         self.health = 100
-        self.shoot_delay = 15 # Frames between shots
+        self.shoot_delay = 150 
         self.last_shot = pygame.time.get_ticks()
 
     def update(self):
@@ -60,8 +60,9 @@ class Player(pygame.sprite.Sprite):
         if self.rect.bottom > HEIGHT:
             self.rect.bottom = HEIGHT
 
-        # Shooting
-        if keys[pygame.K_SPACE]:
+        # Shooting with mouse click held down
+        mouse_buttons = pygame.mouse.get_pressed()
+        if mouse_buttons[0]: # Check if left mouse button is held down
             self.shoot()
 
     def shoot(self):
