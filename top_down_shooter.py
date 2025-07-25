@@ -35,7 +35,7 @@ class Player(pygame.sprite.Sprite):
         self.rect = self.image.get_rect(center=(WIDTH // 2, HEIGHT // 2))
         self.speed = PLAYER_SPEED
         self.health = 100
-        self.shoot_delay = 150 
+        self.shoot_delay = 150
         self.last_shot = pygame.time.get_ticks()
 
     def update(self):
@@ -99,8 +99,9 @@ class Bullet(pygame.sprite.Sprite):
 class Enemy(pygame.sprite.Sprite):
     def __init__(self):
         super().__init__()
-        self.image = pygame.Surface((25, 25))
-        self.image.fill(RED)
+        # Create a circular enemy instead of a square
+        self.image = pygame.Surface((25, 25), pygame.SRCALPHA) # SRCALPHA for transparency
+        pygame.draw.circle(self.image, RED, (12, 12), 12) # Draw a red circle with radius 12, centered at (12,12)
         # Spawn enemy at a random edge of the screen
         side = random.choice(['top', 'bottom', 'left', 'right'])
         if side == 'top':
