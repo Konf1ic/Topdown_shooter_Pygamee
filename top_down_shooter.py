@@ -1,36 +1,36 @@
 import pygame
 import random
 import math
-import os # Import os module to handle file paths
+import os
 
 # --- Game Constants ---
 WIDTH, HEIGHT = 1280, 720
 FPS = 60
 PLAYER_SPEED = 5
-PLAYER_HEALTH_MAX = 100 # Maximum player health
-PLAYER_HEAL_ON_MINIBOSS_KILL = 30 # Health gained when killing a purple mini-boss
+PLAYER_HEALTH_MAX = 100
+PLAYER_HEAL_ON_MINIBOSS_KILL = 30
 BULLET_SPEED = 7
-PLAYER_SHOOT_DELAY = 150 # Player frames between shots
-ENEMY_SPEED = 3 # Speed for normal red enemies
-GREEN_ENEMY_SPEED = 1.5 # Slower speed for green enemies
-MINI_BOSS_SPEED = 1.0 # Even slower speed for mini-boss
-ENEMY_SPAWN_RATE = 45  # Frames between enemy spawns (lower is faster)
-MINI_BOSS_SPAWN_TIME = 10 * FPS # 10 seconds in frames
+PLAYER_SHOOT_DELAY = 150
+ENEMY_SPEED = 3
+GREEN_ENEMY_SPEED = 1.5
+MINI_BOSS_SPEED = 1.0
+ENEMY_SPAWN_RATE = 45
+MINI_BOSS_SPAWN_TIME = 10 * FPS
 SCORE_PER_KILL = 10
-SCORE_PER_MINI_BOSS_KILL = 50 # Score for mini-boss
-ENEMY_HEALTH = 1 # Health for normal red enemies
-GREEN_ENEMY_HEALTH = 2 # Double health for green enemies
-MINI_BOSS_HEALTH = 4 # Health for mini-boss
+SCORE_PER_MINI_BOSS_KILL = 50
+ENEMY_HEALTH = 1
+GREEN_ENEMY_HEALTH = 2
+MINI_BOSS_HEALTH = 4
 MINI_BOSS_BULLET_SPEED = 6
-MINI_BOSS_SHOOT_DELAY = PLAYER_SHOOT_DELAY * 2 # Mini-boss frames between shots (slower than player's)
+MINI_BOSS_SHOOT_DELAY = PLAYER_SHOOT_DELAY * 2
 
 # --- New Boss Constants ---
-TRIANGLE_BOSS_HEALTH = 50 # Needs 50 hits to kill (increased from 4)
-TRIANGLE_BOSS_SPEED = 0.8 # Slower than other enemies
-TRIANGLE_BOSS_SIZE = 70 # Bigger size for the boss
-TRIANGLE_BOSS_SCORE = 200 # Score awarded for killing the triangle boss
-TRIANGLE_BOSS_SPAWN_SCORE_INTERVAL = 1000 # Spawn every 1000 points
-TRIANGLE_BOSS_SHOOT_DELAY = MINI_BOSS_SHOOT_DELAY # Same fire rate as purple mini-boss
+TRIANGLE_BOSS_HEALTH = 50
+TRIANGLE_BOSS_SPEED = 0.8
+TRIANGLE_BOSS_SIZE = 70
+TRIANGLE_BOSS_SCORE = 200
+TRIANGLE_BOSS_SPAWN_SCORE_INTERVAL = 1000
+TRIANGLE_BOSS_SHOOT_DELAY = MINI_BOSS_SHOOT_DELAY
 
 # --- Colors ---
 WHITE = (255, 255, 255)
@@ -39,20 +39,19 @@ RED = (255, 0, 0)
 GREEN = (0, 255, 0)
 BLUE = (0, 0, 255)
 YELLOW = (255, 255, 0)
-PURPLE = (128, 0, 128) # New purple color for mini-boss
+PURPLE = (128, 0, 128)
 GREY = (100, 100, 100)
 
 # --- Initialize Pygame ---
 pygame.init()
-pygame.mixer.init() # Initialize the mixer for sound
+pygame.mixer.init()
 
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Top-Down Shooter")
 clock = pygame.time.Clock()
-font = pygame.font.Font(None, 36) # Default font, size 36
+font = pygame.font.Font(None, 36)
 
 # --- Load Sounds ---
-# Define the path to the 'sounds' directory
 game_folder = os.path.dirname(__file__)
 sound_folder = os.path.join(game_folder, 'sounds')
 
@@ -75,12 +74,11 @@ class Player(pygame.sprite.Sprite):
         self.image.fill(BLUE)
         self.rect = self.image.get_rect(center=(WIDTH // 2, HEIGHT // 2))
         self.speed = PLAYER_SPEED
-        self.health = PLAYER_HEALTH_MAX # Player health
+        self.health = PLAYER_HEALTH_MAX
         self.shoot_delay = PLAYER_SHOOT_DELAY
         self.last_shot = pygame.time.get_ticks()
 
     def update(self):
-        # Get keyboard input
         keys = pygame.key.get_pressed()
         if keys[pygame.K_LEFT] or keys[pygame.K_a]:
             self.rect.x -= self.speed
@@ -91,7 +89,6 @@ class Player(pygame.sprite.Sprite):
         if keys[pygame.K_DOWN] or keys[pygame.K_s]:
             self.rect.y += self.speed
 
-        # Keep player within screen bounds
         if self.rect.left < 0:
             self.rect.left = 0
         if self.rect.right > WIDTH:
@@ -101,25 +98,22 @@ class Player(pygame.sprite.Sprite):
         if self.rect.bottom > HEIGHT:
             self.rect.bottom = HEIGHT
 
-        # Shooting with mouse click held down
         mouse_buttons = pygame.mouse.get_pressed()
-        if mouse_buttons[0]: # Check if left mouse button is held down
+        if mouse_buttons[0]:
             self.shoot()
 
     def shoot(self):
         now = pygame.time.get_ticks()
         if now - self.last_shot > self.shoot_delay:
             self.last_shot = now
-            # Play gun sound
             if gun_sound:
                 gun_sound.play()
-            # Calculate bullet direction towards mouse
             mouse_x, mouse_y = pygame.mouse.get_pos()
             player_center_x, player_center_y = self.rect.center
             angle = math.atan2(mouse_y - player_center_y, mouse_x - player_center_x)
             bullet = Bullet(player_center_x, player_center_y, angle)
             all_sprites.add(bullet)
-            player_bullets.add(bullet) # Changed from 'bullets' to 'player_bullets'
+            player_bullets.add(bullet)
 
     def take_damage(self, amount):
         self.health -= amount
@@ -140,7 +134,6 @@ class Bullet(pygame.sprite.Sprite):
     def update(self):
         self.rect.x += self.vel_x
         self.rect.y += self.vel_y
-        # Remove bullet if it goes off screen
         if not screen.get_rect().colliderect(self.rect):
             self.kill()
 
@@ -148,10 +141,8 @@ class Bullet(pygame.sprite.Sprite):
 class Enemy(pygame.sprite.Sprite):
     def __init__(self):
         super().__init__()
-        # Create a circular enemy
         self.image = pygame.Surface((25, 25), pygame.SRCALPHA)
         pygame.draw.circle(self.image, RED, (12, 12), 12)
-        # Spawn enemy at a random edge of the screen
         side = random.choice(['top', 'bottom', 'left', 'right'])
         if side == 'top':
             x = random.randint(0, WIDTH)
@@ -162,7 +153,7 @@ class Enemy(pygame.sprite.Sprite):
         elif side == 'left':
             x = -50
             y = random.randint(0, HEIGHT)
-        else: # right
+        else:
             x = WIDTH + 50
             y = random.randint(0, HEIGHT)
         self.rect = self.image.get_rect(center=(x, y))
@@ -170,7 +161,6 @@ class Enemy(pygame.sprite.Sprite):
         self.health = ENEMY_HEALTH
 
     def update(self):
-        # Move towards the player
         player_center = player.rect.center
         enemy_center = self.rect.center
         dx = player_center[0] - enemy_center[0]
@@ -184,10 +174,8 @@ class Enemy(pygame.sprite.Sprite):
 class EnemyGreen(pygame.sprite.Sprite):
     def __init__(self):
         super().__init__()
-        # Create a larger green circular enemy
         self.image = pygame.Surface((40, 40), pygame.SRCALPHA)
         pygame.draw.circle(self.image, GREEN, (20, 20), 20)
-        # Spawn enemy at a random edge of the screen
         side = random.choice(['top', 'bottom', 'left', 'right'])
         if side == 'top':
             x = random.randint(0, WIDTH)
@@ -198,7 +186,7 @@ class EnemyGreen(pygame.sprite.Sprite):
         elif side == 'left':
             x = -50
             y = random.randint(0, HEIGHT)
-        else: # right
+        else:
             x = WIDTH + 50
             y = random.randint(0, HEIGHT)
         self.rect = self.image.get_rect(center=(x, y))
@@ -206,7 +194,6 @@ class EnemyGreen(pygame.sprite.Sprite):
         self.health = GREEN_ENEMY_HEALTH
 
     def update(self):
-        # Move towards the player
         player_center = player.rect.center
         enemy_center = self.rect.center
         dx = player_center[0] - enemy_center[0]
@@ -220,8 +207,8 @@ class EnemyGreen(pygame.sprite.Sprite):
 class BossBullet(pygame.sprite.Sprite):
     def __init__(self, x, y, angle, color):
         super().__init__()
-        self.image = pygame.Surface((15, 15), pygame.SRCALPHA) # Slightly larger bullet
-        pygame.draw.circle(self.image, color, (7, 7), 7) # Use the color parameter
+        self.image = pygame.Surface((15, 15), pygame.SRCALPHA)
+        pygame.draw.circle(self.image, color, (7, 7), 7)
         self.rect = self.image.get_rect(center=(x, y))
         self.speed = MINI_BOSS_BULLET_SPEED
         self.vel_x = self.speed * math.cos(angle)
@@ -230,7 +217,6 @@ class BossBullet(pygame.sprite.Sprite):
     def update(self):
         self.rect.x += self.vel_x
         self.rect.y += self.vel_y
-        # Remove bullet if it goes off screen
         if not screen.get_rect().colliderect(self.rect):
             self.kill()
 
@@ -238,9 +224,8 @@ class BossBullet(pygame.sprite.Sprite):
 class MiniBoss(pygame.sprite.Sprite):
     def __init__(self):
         super().__init__()
-        self.image = pygame.Surface((60, 60), pygame.SRCALPHA) # Larger size
-        pygame.draw.circle(self.image, PURPLE, (30, 30), 30) # Purple circle
-        # Spawn at a random edge
+        self.image = pygame.Surface((60, 60), pygame.SRCALPHA)
+        pygame.draw.circle(self.image, PURPLE, (30, 30), 30)
         side = random.choice(['top', 'bottom', 'left', 'right'])
         if side == 'top':
             x = random.randint(0, WIDTH)
@@ -251,7 +236,7 @@ class MiniBoss(pygame.sprite.Sprite):
         elif side == 'left':
             x = -70
             y = random.randint(0, HEIGHT)
-        else: # right
+        else:
             x = WIDTH + 70
             y = random.randint(0, HEIGHT)
         self.rect = self.image.get_rect(center=(x, y))
@@ -261,7 +246,6 @@ class MiniBoss(pygame.sprite.Sprite):
         self.last_shot = pygame.time.get_ticks()
 
     def update(self):
-        # Move towards the player
         player_center = player.rect.center
         boss_center = self.rect.center
         dx = player_center[0] - boss_center[0]
@@ -271,18 +255,16 @@ class MiniBoss(pygame.sprite.Sprite):
             self.rect.x += self.speed * (dx / dist)
             self.rect.y += self.speed * (dy / dist)
 
-        # Mini-boss shooting logic
         now = pygame.time.get_ticks()
         if now - self.last_shot > self.shoot_delay:
             self.last_shot = now
             self.shoot()
 
     def shoot(self):
-        # Calculate bullet direction towards player
         player_center_x, player_center_y = player.rect.center
         boss_center_x, boss_center_y = self.rect.center
         angle = math.atan2(player_center_y - boss_center_y, player_center_x - boss_center_x)
-        bullet = BossBullet(boss_center_x, boss_center_y, angle, PURPLE) # Pass PURPLE color
+        bullet = BossBullet(boss_center_x, boss_center_y, angle, PURPLE)
         all_sprites.add(bullet)
         mini_boss_bullets.add(bullet)
 
@@ -291,14 +273,12 @@ class TriangleBoss(pygame.sprite.Sprite):
     def __init__(self):
         super().__init__()
         self.image = pygame.Surface((TRIANGLE_BOSS_SIZE, TRIANGLE_BOSS_SIZE), pygame.SRCALPHA)
-        # Draw a yellow triangle
         points = [
-            (TRIANGLE_BOSS_SIZE // 2, 0), # Top point
-            (0, TRIANGLE_BOSS_SIZE),      # Bottom-left point
-            (TRIANGLE_BOSS_SIZE, TRIANGLE_BOSS_SIZE) # Bottom-right point
+            (TRIANGLE_BOSS_SIZE // 2, 0),
+            (0, TRIANGLE_BOSS_SIZE),
+            (TRIANGLE_BOSS_SIZE, TRIANGLE_BOSS_SIZE)
         ]
         pygame.draw.polygon(self.image, YELLOW, points)
-        # Spawn at a random edge
         side = random.choice(['top', 'bottom', 'left', 'right'])
         if side == 'top':
             x = random.randint(0, WIDTH)
@@ -309,17 +289,16 @@ class TriangleBoss(pygame.sprite.Sprite):
         elif side == 'left':
             x = -TRIANGLE_BOSS_SIZE
             y = random.randint(0, HEIGHT)
-        else: # right
+        else:
             x = WIDTH + TRIANGLE_BOSS_SIZE
             y = random.randint(0, HEIGHT)
         self.rect = self.image.get_rect(center=(x, y))
         self.speed = TRIANGLE_BOSS_SPEED
         self.health = TRIANGLE_BOSS_HEALTH
-        self.shoot_delay = TRIANGLE_BOSS_SHOOT_DELAY # Set shoot delay for triangle boss
+        self.shoot_delay = TRIANGLE_BOSS_SHOOT_DELAY
         self.last_shot = pygame.time.get_ticks()
 
     def update(self):
-        # Move towards the player
         player_center = player.rect.center
         boss_center = self.rect.center
         dx = player_center[0] - boss_center[0]
@@ -329,20 +308,18 @@ class TriangleBoss(pygame.sprite.Sprite):
             self.rect.x += self.speed * (dx / dist)
             self.rect.y += self.speed * (dy / dist)
 
-        # Triangle boss shooting logic (same as MiniBoss)
         now = pygame.time.get_ticks()
         if now - self.last_shot > self.shoot_delay:
             self.last_shot = now
             self.shoot()
 
     def shoot(self):
-        # Calculate bullet direction towards player
         player_center_x, player_center_y = player.rect.center
         boss_center_x, boss_center_y = self.rect.center
         angle = math.atan2(player_center_y - boss_center_y, player_center_x - boss_center_x)
-        bullet = BossBullet(boss_center_x, boss_center_y, angle, RED) # Pass RED color for triangle boss bullets
+        bullet = BossBullet(boss_center_x, boss_center_y, angle, RED)
         all_sprites.add(bullet)
-        mini_boss_bullets.add(bullet) # Add to mini_boss_bullets group for collision with player
+        mini_boss_bullets.add(bullet)
 
 
 # --- Health Bar Function ---
@@ -353,22 +330,22 @@ def draw_health_bar(surface, x, y, health, max_health, width, height):
     outline_rect = pygame.Rect(x, y, width, height)
     fill_rect = pygame.Rect(x, y, fill, height)
     pygame.draw.rect(surface, GREEN, fill_rect)
-    pygame.draw.rect(surface, WHITE, outline_rect, 2) # Outline
+    pygame.draw.rect(surface, WHITE, outline_rect, 2)
 
 # --- Game Variables ---
 score = 0
 game_over = False
 enemy_spawn_timer = 0
 mini_boss_spawn_timer = 0
-triangle_boss_active = False # New variable to track if triangle boss is active
-last_triangle_boss_score = 0 # Track score when last triangle boss spawned
+triangle_boss_active = False
+last_triangle_boss_score = 0
 
 # --- Sprite Groups ---
 all_sprites = pygame.sprite.Group()
 player_bullets = pygame.sprite.Group()
-enemies = pygame.sprite.Group() # Contains red, green, and mini-boss enemies
+enemies = pygame.sprite.Group()
 mini_boss_bullets = pygame.sprite.Group()
-triangle_boss_group = pygame.sprite.Group() # New group for the triangle boss
+triangle_boss_group = pygame.sprite.Group()
 
 # Create player
 player = Player()
@@ -377,23 +354,18 @@ all_sprites.add(player)
 # --- Game Loop ---
 running = True
 while running:
-    # Keep loop running at the right speed
     clock.tick(FPS)
 
-    # --- Event Handling ---
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
 
     if not game_over:
-        # --- Update ---
         all_sprites.update()
 
-        # Spawn regular enemies (red and green) and mini-bosses ONLY if triangle boss is not active
         if not triangle_boss_active:
             enemy_spawn_timer += 1
             if enemy_spawn_timer >= ENEMY_SPAWN_RATE:
-                # Randomly choose which regular enemy to spawn (70% red, 30% green)
                 if random.random() < 0.7:
                     enemy = Enemy()
                 else:
@@ -402,26 +374,21 @@ while running:
                 enemies.add(enemy)
                 enemy_spawn_timer = 0
 
-            # Spawn mini-boss
             mini_boss_spawn_timer += 1
             if mini_boss_spawn_timer >= MINI_BOSS_SPAWN_TIME:
                 mini_boss = MiniBoss()
                 all_sprites.add(mini_boss)
-                enemies.add(mini_boss) # Add mini-boss to general enemies group for player bullet collision
+                enemies.add(mini_boss)
                 mini_boss_spawn_timer = 0
 
-        # Check for Triangle Boss spawn condition
-        # Spawn every time score crosses a new TRIANGLE_BOSS_SPAWN_SCORE_INTERVAL multiple
         if score >= (last_triangle_boss_score + TRIANGLE_BOSS_SPAWN_SCORE_INTERVAL) and not triangle_boss_active:
             triangle_boss = TriangleBoss()
             all_sprites.add(triangle_boss)
-            enemies.add(triangle_boss) # Add to general enemies group for collision
-            triangle_boss_group.add(triangle_boss) # Add to specific group for tracking
+            enemies.add(triangle_boss)
+            triangle_boss_group.add(triangle_boss)
             triangle_boss_active = True
-            # Update last_triangle_boss_score to the current multiple of the interval
             last_triangle_boss_score = (score // TRIANGLE_BOSS_SPAWN_SCORE_INTERVAL) * TRIANGLE_BOSS_SPAWN_SCORE_INTERVAL
 
-        # Collision detection: Player Bullets vs. Enemies (including mini-boss and triangle boss)
         hits = pygame.sprite.groupcollide(enemies, player_bullets, False, True)
         for enemy_hit, bullet_hit_list in hits.items():
             enemy_hit.health -= len(bullet_hit_list)
@@ -431,46 +398,39 @@ while running:
                     enemy_death_sound.play()
                 if isinstance(enemy_hit, MiniBoss):
                     score += SCORE_PER_MINI_BOSS_KILL
-                    player.health = min(player.health + PLAYER_HEAL_ON_MINIBOSS_KILL, PLAYER_HEALTH_MAX) # Heal player
-                elif isinstance(enemy_hit, TriangleBoss): # Check if it's the triangle boss
+                    player.health = min(player.health + PLAYER_HEAL_ON_MINIBOSS_KILL, PLAYER_HEALTH_MAX)
+                elif isinstance(enemy_hit, TriangleBoss):
                     score += TRIANGLE_BOSS_SCORE
-                    triangle_boss_active = False # End boss fight, resume normal spawning
+                    triangle_boss_active = False
                 else:
                     score += SCORE_PER_KILL
 
-        # Collision detection: Player vs. Enemies (red, green, mini-boss, triangle boss)
-        player_enemy_hits = pygame.sprite.spritecollide(player, enemies, True) # True means enemy is removed on contact
+        player_enemy_hits = pygame.sprite.spritecollide(player, enemies, True)
         if player_enemy_hits:
-            player.take_damage(len(player_enemy_hits) * 20) # Player takes damage for each enemy hit
+            player.take_damage(len(player_enemy_hits) * 20)
 
-        # Collision detection: Player vs. Mini-Boss Bullets
-        player_bullet_hits = pygame.sprite.spritecollide(player, mini_boss_bullets, True) # True means bullet is removed
+        player_bullet_hits = pygame.sprite.spritecollide(player, mini_boss_bullets, True)
         if player_bullet_hits:
-            player.take_damage(len(player_bullet_hits) * 10) # Player takes damage for each mini-boss bullet hit
+            player.take_damage(len(player_bullet_hits) * 10)
 
-        # Check if player health is zero
-        if player.health <= 0 and not game_over: # Ensure sound plays only once
+        if player.health <= 0 and not game_over:
             game_over = True
             if player_death_sound:
                 player_death_sound.play()
 
 
-    # --- Drawing ---
-    screen.fill(BLACK) # Clear screen
+    screen.fill(BLACK)
 
-    all_sprites.draw(screen) # Draw all sprites
+    all_sprites.draw(screen)
 
-    # Display score
     score_text = font.render(f"Score: {score}", True, WHITE)
     screen.blit(score_text, (10, 10))
 
-    # Draw player health bar
     draw_health_bar(screen, 10, 50, player.health, PLAYER_HEALTH_MAX, 200, 20)
     health_text = font.render(f"Health: {player.health}/{PLAYER_HEALTH_MAX}", True, WHITE)
     screen.blit(health_text, (10, 80))
 
 
-    # Display Game Over message
     if game_over:
         game_over_text = font.render("GAME OVER!", True, WHITE)
         restart_text = font.render("Press R to Restart", True, WHITE)
@@ -479,25 +439,22 @@ while running:
         screen.blit(game_over_text, text_rect)
         screen.blit(restart_text, restart_rect)
 
-        # Check for restart
         keys = pygame.key.get_pressed()
         if keys[pygame.K_r]:
-            # Reset game
             score = 0
             game_over = False
             all_sprites.empty()
             player_bullets.empty()
             enemies.empty()
             mini_boss_bullets.empty()
-            triangle_boss_group.empty() # Clear triangle boss group
+            triangle_boss_group.empty()
             player = Player()
             all_sprites.add(player)
             enemy_spawn_timer = 0
             mini_boss_spawn_timer = 0
-            triangle_boss_active = False # Reset boss active state
-            last_triangle_boss_score = 0 # Reset boss score tracker
+            triangle_boss_active = False
+            last_triangle_boss_score = 0
 
-    # --- Update Display ---
     pygame.display.flip()
 
 pygame.quit()
